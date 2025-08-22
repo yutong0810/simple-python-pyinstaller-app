@@ -1,25 +1,26 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.10'
-            args '-u root:root'
-        }
-    } 
-    options {
-        skipStagesAfterUnstable()
-    }
-    
+    agent any
+
     stages {
-        stage('Build') { 
+        stage('Build Docker Image') {
             steps {
-                sh 'python -m py_compile sources/add2vals.py sources/calc.py' 
-                stash(name: 'compiled-results', includes: 'sources/*.py*') 
+                script {
+                    // Build Docker image from Dockerfile in workspace root
+                    def customImage = docker.build("my-python-app:${env.BUILD_ID}")
+                    // Save the image for later stages
+                    env.IMAGE_NAME = customImage.id
+                }
             }
         }
 
         stage('Test') {
             steps {
-                sh 'py.test --junit-xml test-reports/results.xml sources/test_calc.py'
+                script {
+                    // Run tests inside the built Docker container
+                    docker.image(env.IMAGE_NAME).inside {
+                        sh 'pytest --junit-xml test-reports/results.xml sources/test_calc.py'
+                    }
+                }
             }
             post {
                 always {
@@ -30,14 +31,15 @@ pipeline {
 
         stage('Deliver') {
             steps {
-                sh "pyinstaller --onefile sources/add2vals.py"
-            }
-            post {
-                success {
-                    archiveArtifacts 'dist/add2vals'
+                script {
+                    // Build executable with pyinstaller inside the container
+                    docker.image(env.IMAGE_NAME).inside {
+                        sh 'pyinstaller --onefile sources/add2vals.py'
+                    }
                 }
+                // Archive the generated binary
+                archiveArtifacts 'dist/add2vals'
             }
         }
-
     }
 }

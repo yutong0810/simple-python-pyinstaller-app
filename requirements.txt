@@ -1,0 +1,4 @@
+pytest
+pyinstaller
+# add other libs you use
+

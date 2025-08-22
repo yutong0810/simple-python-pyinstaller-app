@@ -5,8 +5,8 @@ FROM python:3.10
 WORKDIR /app
 
 # Copy your source code and requirements (if any)
-# COPY sources/ ./sources/
-# COPY requirements.txt ./
+COPY sources/ ./sources/
+COPY requirements.txt ./
 
 # Install dependencies (adjust if you have requirements.txt)
 RUN pip install --no-cache-dir -r requirements.txt
